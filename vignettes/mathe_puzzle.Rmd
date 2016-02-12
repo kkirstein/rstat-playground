@@ -11,6 +11,7 @@ vignette: >
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(DiagrammeR)
 library(dplyr)
 library(e1071)
 ```
@@ -19,21 +20,25 @@ library(e1071)
 
 tbd.
 
+```{r graph}
+
+```
+
 
 ## Brute-Force Ansatz
 
 Erstelle eine Tabelle mit allen Kombinationen der Zahlen 1 bis 9:
 
 ```{r permutations}
-comb <- data.frame(permutations(9))
-num_comb = nrow(comb)
-head(comb)
+comb <- data.frame(permutations(9)) %>% tbl_df
+print(comb)
 ```
 
 Erweitere die Tabelle mit den zu testenden Summen (`r seq(15, 25)`):
 
 ```{r sum_defs}
-sums <- data.frame(comb, Summe = as.numeric(gl(11, num_comb)) + 14)
+sums <- data.frame(comb, Summe = as.numeric(gl(11, nrow(comb))) + 14) %>%
+  tbl_df
 ```
 
 Definiere Predikate für die einzelnen Reihen:
