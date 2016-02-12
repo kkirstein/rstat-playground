@@ -1,0 +1,70 @@
+---
+title: "Mathe Puzzle"
+author: "Kay-Uwe Kirstein"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(e1071)
+```
+
+## Aufgabe
+
+tbd.
+
+
+## Brute-Force Ansatz
+
+Erstelle eine Tabelle mit allen Kombinationen der Zahlen 1 bis 9:
+
+```{r permutations}
+comb <- data.frame(permutations(9))
+num_comb = nrow(comb)
+head(comb)
+```
+
+Erweitere die Tabelle mit den zu testenden Summen (`r seq(15, 25)`):
+
+```{r sum_defs}
+sums <- data.frame(comb, Summe = as.numeric(gl(11, num_comb)) + 14)
+```
+
+Definiere Predikate für die einzelnen Reihen:
+
+```{r sum_pred}
+is_sum <- function(a, b, c, d, sum) {
+  a + b + c + d == sum
+}
+```
+
+Prüfe alle Kombinationen auf korrekte Summen:
+
+```{r sum_checks}
+checked <- mutate(sums,
+                  sum1 = is_sum(X1, X7, X8, X4, Summe),
+                  sum2 = is_sum(X2, X7, X9, X5, Summe),
+                  sum3 = is_sum(X3, X8, X9, X6, Summe),
+                  Korrekt = sum1 & sum2 & sum3) %>%
+  select(-sum1, -sum2, -sum3)
+```
+
+Wähle die gewünschte(n) Kombinationen aus:
+
+```{r filter_valid}
+knitr::kable(filter(checked, Korrekt == TRUE & Summe == 17 & X1 == 6 & X6 == 5))
+```
+
+Analysiere bei welcher Summe die meisten gültgen Kombinationen auftreten:
+
+```{r sum_correct}
+correct <- filter(checked, Korrekt == TRUE)
+knitr::kable(group_by(correct, Summe) %>% summarise(Anzahl = n()))
+```
+
