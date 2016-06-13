@@ -1,0 +1,63 @@
+---
+title: "Deep Learning"
+author: "Kay-Uwe Kirstein"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r global_opts, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r setup}
+library(mxnet)
+```
+
+
+## Classify Demo Data
+
+This tutorial is taken from an [introduction](http://www.r-bloggers.com/deep-learning-with-mxnetr/) to the [MXNetR package](https://github.com/dmlc/mxnet) on [R-bloggers](http://www.r-bloggers.com).
+
+
+```{r class_train}
+data(Sonar, package = 'mlbench')
+
+# convert label to numeric
+Sonar[,61] <- as.numeric(Sonar[,61]) - 1
+
+# manually select training samples to make sure both classes are covered
+train.ind <- c(1:50, 100:150)
+train.x <- data.matrix(Sonar[train.ind, 1:60])
+train.y <- Sonar[train.ind, 61]
+test.x <- data.matrix(Sonar[-train.ind, 1:60])
+test.y <- Sonar[-train.ind, 61]
+```
+
+Use a multi-layer perception (network) as classifier:
+
+```{r class_network}
+mx.set.seed(0) # to reproduce results
+
+model <- mx.mlp(train.x, train.y,
+                hidden_node = 10,
+                out_node = 2, out_activation = "softmax",
+                num.round = 20, array.batch.size = 15,
+                learning.rate = 0.07, momentum = 0.9,
+                eval.metric = mx.metric.accuracy)
+
+```
+
+Now, let's do predictions for our test samples:
+
+```{r class_predict}
+preds <- predict(model, test.x)
+pred.label <- max.col(t(preds)) - 1
+
+table(test.y, pred.label)
+```
+
