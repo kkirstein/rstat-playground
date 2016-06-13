@@ -18,16 +18,23 @@ It is taken from the [SVM tutorial](http://rstatistics.net/support-vector-machin
 Using the cats dataset from the MASS package:
 
 ```{r setup}
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
 library(e1071)  # Misc Functions of the Department of Statistics, Probability Theory Group
                 #(Formerly: E1071), TU Wien
+```
 
+```{r data_source}
 data(cats, package = "MASS")
 inputData <- data.frame(cats[, c (2,3)],
-                        response = as.factor(cats$Sex)) # setup response as factor
+                        response = as.factor(cats$Sex)) %>% tbl_df # corce response to factor
+print(inputData)
 ```
 
 
 ## Linear SVM
+
+The key parameters passed to the `svm()` are _kernel_, _cost_ and _gamma_. Kernel is the type of SVM which could be linear, polynomial, radial or sigmoid. Cost is the cost function of constraint violation and gamma is a parameter used by all kernels except linear. There is a _type_ parameter that determines whether the model is used for regression, classification or novelty detection. But this need not be explicitly set as SVM will auto detect this based on the class of response variable being a factor or a continuous variable. So for classification problems, be sure to cast your response variable as a factor.
 
 ```{r linear_svm, fig.width=6, fig.asp=1}
 svmfit <- svm(response ~ ., data = inputData,
@@ -45,9 +52,11 @@ mean(inputData$response != predict(svmfit)) # misclassification factor
 
 ## Radial SVM
 
+The radial basis function, a popular kernel function can be used by setting the _kernel_ parameter as “radial”. When a "radial" kernel is used the resulting hyperplane need not be a line anymore. A curved region of separation is usually defined to demarcate the separation between classes, often leading to higher accuracy within the training data.
+
 ```{r radial_svm, fig.width=6, fig.asp=1}
 svmfit <- svm(response ~ ., data = inputData,
-              kernel = "radial", cost = 10, scale = FALSE) # radial SVM, scaling turned of
+              kernel = "radial", cost = 10, scale = FALSE) # radial SVM, scaling turned off
 
 print(svmfit)
 
@@ -61,6 +70,8 @@ mean(inputData$response != predict(svmfit)) # misclassification factor
 
 ## Find the Optimal Parameters
 
+### Obtain Training- and Test-Dataset
+
 ```{r training_set}
 set.seed(100) # for reproducible results
 
@@ -71,6 +82,28 @@ trainingRows <- sample(rowIndices, sampleSize)
 trainingData <- inputData[trainingRows, ] # training data
 testData <- inputData[-trainingRows, ]    # test data
 ```
+
+Alternatively, the `sample_frac()` (or `sample_n()`) method from the _dplyr_ package can be used:
+
+```{r training_set_dplyr}
+set.seed(100) # for reproducible results
+
+# add an row index
+inputData <- mutate(inputData, Idx = seq_along(Bwt))
+
+trainingData <- sample_frac(inputData, 0.8)   # training data
+testData <- setdiff(inputData, trainingData)  # test data
+
+# clean-up
+inputData <- select(inputData, -Idx)
+trainingData <- select(trainingData, -Idx)
+testData <- select(testData, -Idx)
+```
+
+
+### Tune SVM Parameter
+
+You can find the optimal parameters for the svm() using the tune.svm() function.
 
 ```{r tune_svm}
 tuned <- tune.svm(response ~ ., data = trainingData,
@@ -88,6 +121,7 @@ print(svmfit)
 
 plot(svmfit, trainingData)
 
+# apply testData
 compareTable <- table(testData$response, predict(svmfit, testData))
 
 mean(testData$response != predict(svmfit, testData)) # misclassification factor
@@ -95,6 +129,8 @@ mean(testData$response != predict(svmfit, testData)) # misclassification factor
 
 
 ## Grid Plot
+
+A 2-coloured grid plot, makes is visually clear which regions of the plot is designated to which class of response by the SVM classifier. In the below example, the data points are plotted against such a grid and the support vectors points are marked by a tilted square around the data points. Obviously, in this case, there are many constraint violations marked by the boundary cross-overs, but these are weighted down by the SVM internally.
 
 ### Traditionally with Plot/Point
 
@@ -128,7 +164,25 @@ points(trainingData[svmfit$index, c (2, 1)], pch=5, cex=1.5) # plot support vect
 ### With GGPlot
 
 ```{r grid_ggplot, fig.width=6, fig.asp=1}
+n_points_in_grid = 60 # num grid points in a line
 
+y_axis_range <- range(inputData$Bwt) # range of Y axis
+x_axis_range <- range(inputData$Hwt) # range of X axis
 
+grid_points <- setNames(expand.grid(seq(x_axis_range[1], x_axis_range[2],
+                                        length.out = n_points_in_grid),
+                                    seq(y_axis_range[1], y_axis_range[2],
+                                        length.out = n_points_in_grid)),
+                        c("Hwt", "Bwt"))
+grid_points <- mutate(grid_points, response = predict(svmfit, grid_points))
+
+grid_plot <- ggplot() +
+  geom_point(data = grid_points, aes(x = Hwt, y = Bwt, col = response),
+             size = 0.8) +
+  geom_point(data = trainingData, aes(x = Hwt, y = Bwt, shape = response)) +
+  scale_shape_manual(values = c(1, 2)) +
+  ggtitle("Grid Plot of Optimized SVM Model")
+
+print(grid_plot)
 ```
 
