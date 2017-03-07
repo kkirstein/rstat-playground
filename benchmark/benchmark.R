@@ -3,6 +3,7 @@
 # programming language
 
 source("benchmark/fibonacci.R")
+source("benchmark/perfect_number.R")
 
 # Fibonacci numbers
 print("Fibonacci numbers")
